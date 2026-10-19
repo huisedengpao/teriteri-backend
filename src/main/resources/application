@@ -40,10 +40,8 @@ spring:
     testOnReturn: false
     # 设置是否缓存 PreparedStatement，默认为 true，即缓存 PreparedStatement，提高性能
     poolPreparedStatements: true
-    # 配置监控统计拦截的filters，stat:监控统计、log4j：日志记录、wall：防御sql注入
-    # 如果允许时报错  java.lang.ClassNotFoundException: org.apache.log4j.Priority
-    # 则导入 log4j 依赖即可，Maven 地址：https://mvnrepository.com/artifact/log4j/log4j
-    filters: stat,wall,log4j
+    # 配置监控统计拦截的filters，stat:监控统计、slf4j：日志记录（Boot3 升级：原 log4j 1.x 已停止维护，改用 slf4j）、wall：防御sql注入
+    filters: stat,wall,slf4j
     # 每个连接在缓存 PreparedStatement 的最大数量
     maxPoolPreparedStatementPerConnectionSize: 20
     # 是否启用全局统计。如果设置为 true，则 Druid 的监控统计功能将会全局启用
@@ -57,47 +55,68 @@ spring:
       max-request-size: 30MB
       # 设置懒解析，提升上传性能
       resolve-lazily: true
-  redis:
-    # Redis数据库索引（默认为0）
-    database: 0
-    # Redis服务器地址
+  # Boot3 升级：spring.redis.* 迁移为 spring.data.redis.*
+  data:
+    redis:
+      # Redis数据库索引（默认为0）
+      database: 0
+      # Redis服务器地址
+      host: ***.***.***.***
+      # Redis服务器连接端口
+      port: 6379
+      # Redis服务器密码（本地无密码则留空）
+      password: ***
+      jedis:
+        # 连接池是为了避免频繁地创建和销毁Redis连接，以提高性能
+        pool:
+          # 连接池中的最小空闲连接
+          min-idle: 10
+          # 连接池中的最大空闲连接，较大的值可以支持更多的并发连接，但也会占用更多的资源
+          max-idle: 10
+          # 连接池最大连接数（使用负值表示没有限制）
+          max-active: 100
+          # 连接池最大阻塞等待时间（使用负值表示没有限制）
+          max-wait: -1
+          # 从池中借用连接时，验证连接是否仍然有效 默认false
+          testOnBorrow: true
+          # 定期对空闲连接进行验证，以确保它们仍然有效 默认false
+          testWhileIdle: true
+          # 连接在池中空闲的时间超过这个值，那么它可能会被连接池回收 默认60000 即60秒
+          minEvictableIdleTimeMills: 60000
+          # 定期运行空闲连接回收的时间间隔，查找并回收那些空闲时间超过 minEvictableIdleTimeMills 的连接 默认30000 即30秒
+          timeBetweenEvictionRunsMillis: 30000
+          # 每次运行连接回收时要测试的连接数，-1表示测试所有的空闲连接
+          numTestsPerEvictionRun: -1
+      # 连接超时时间（毫秒）
+      timeout: 5000
+  rabbitmq:
+    # RabbitMQ服务器地址
     host: ***.***.***.***
-    # Redis服务器连接端口
-    port: 6379
+    # RabbitMQ服务器连接端口
+    port: 5672
+    # 访问用户名和密码
+    username: ***
     password: ***
-    jedis:
-      # 连接池是为了避免频繁地创建和销毁Redis连接，以提高性能
-      pool:
-        # 连接池中的最小空闲连接
-        min-idle: 10
-        # 连接池中的最大空闲连接，较大的值可以支持更多的并发连接，但也会占用更多的资源
-        max-idle: 10
-        # 连接池最大连接数（使用负值表示没有限制）
-        max-active: 100
-        # 连接池最大阻塞等待时间（使用负值表示没有限制）
-        max-wait: -1
-        # 从池中借用连接时，验证连接是否仍然有效 默认false
-        testOnBorrow: true
-        # 定期对空闲连接进行验证，以确保它们仍然有效 默认false
-        testWhileIdle: true
-        # 连接在池中空闲的时间超过这个值，那么它可能会被连接池回收 默认60000 即60秒
-        minEvictableIdleTimeMills: 60000
-        # 定期运行空闲连接回收的时间间隔，查找并回收那些空闲时间超过 minEvictableIdleTimeMills 的连接 默认30000 即30秒
-        timeBetweenEvictionRunsMillis: 30000
-        # 每次运行连接回收时要测试的连接数，-1表示测试所有的空闲连接
-        numTestsPerEvictionRun: -1
-    # 连接超时时间（毫秒）
-    timeout: 5000
-#  rabbitmq:
-#    # RabbitMQ服务器地址
-#    host: ***.***.***.***
-#    # RabbitMQ服务器连接端口
-#    port: 5672
-#    # 访问用户名和密码
-#    username: ***
-#    password: ***
-#    # 虚拟主机
-#    virtual-host: /
+    # 虚拟主机
+    virtual-host: /
+
+# 内容审核：敏感词AC自动机快筛（同步） + LLM复审（异步）双通道
+moderation:
+  # 敏感词词表位置（classpath资源，每行一个词，词后加 |REVIEW 表示复审级，默认拦截级）
+  word-list: classpath:sensitive-words.txt
+  llm:
+    # LLM复审通道开关；未配置 api-key 时自动降级为纯敏感词快筛
+    enabled: true
+    # DashScope API Key（留空则关闭LLM复审，仅敏感词快筛）
+    api-key: ''
+    # OpenAI兼容模式接入点
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    # 复审模型（qwen-turbo 免费额度受限流影响时可用 qwen-flash / qwen-plus 替代）
+    model: qwen-flash
+    # 快筛通过内容的复审抽样率0.0~1.0（控制LLM调用成本）；命中复审级的内容必然复审
+    sample-rate: 1.0
+    # LLM调用读超时（秒）
+    timeout-seconds: 20
 
 directory:
   # 投稿视频存储目录

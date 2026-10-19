@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.15</version>
+        <version>3.3.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -17,34 +17,23 @@
     <name>backend</name>
     <description>backend</description>
     <properties>
-        <java.version>1.8</java.version>
+        <java.version>17</java.version>
         <elasticsearch.version>7.17.16</elasticsearch.version>
     </properties>
     <dependencies>
 
-        <!--高性能数据库连接池-->
+        <!--高性能数据库连接池（Boot3 专用 starter，日志 filter 改用 slf4j，不再依赖已停止维护的 log4j 1.x）-->
         <dependency>
             <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-starter</artifactId>
-            <version>1.2.19</version>
-        </dependency>
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>druid</artifactId>
-            <version>1.2.19</version>
-        </dependency>
-        <!--druid依赖log4j包-->
-        <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.17</version>
+            <artifactId>druid-spring-boot-3-starter</artifactId>
+            <version>1.2.23</version>
         </dependency>
 
         <!--简化代码，帮写什么get、setter函数-->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.24</version>
+            <version>1.18.34</version>
             <scope>provided</scope>
         </dependency>
 
@@ -53,23 +42,17 @@
             <artifactId>mysql-connector-j</artifactId>
             <version>8.0.31</version>
         </dependency>
-        <!--省很多手写语句-->
+        <!--省很多手写语句（Boot3 专用 starter）-->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
-            <version>3.5.2</version>
-        </dependency>
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-generator</artifactId>
-            <version>3.5.3</version>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <version>3.5.9</version>
         </dependency>
 
         <!-- 安全认证 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
-            <version>2.7.5</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -119,13 +102,6 @@
             <version>3.13.0</version>
         </dependency>
 
-        <!--文件上传相关-->
-        <dependency>
-            <groupId>commons-fileupload</groupId>
-            <artifactId>commons-fileupload</artifactId>
-            <version>1.5</version>
-        </dependency>
-
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
@@ -137,12 +113,6 @@
             <groupId>com.aliyun.oss</groupId>
             <artifactId>aliyun-sdk-oss</artifactId>
             <version>3.17.1</version>
-        </dependency>
-
-        <dependency>
-            <groupId>commons-beanutils</groupId>
-            <artifactId>commons-beanutils</artifactId>
-            <version>1.9.3</version>
         </dependency>
 
         <!--配置注解处理器-->
@@ -189,10 +159,10 @@
             <artifactId>elasticsearch-java</artifactId>
             <version>7.17.16</version>
         </dependency>
+        <!--jackson 版本交由 Boot 父工程管理，避免与 Boot3 管理的版本冲突-->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.12.3</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish</groupId>

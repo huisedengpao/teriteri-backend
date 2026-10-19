@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CachingConfigurerSupport;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
@@ -21,24 +21,25 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 
 @Configuration
 @EnableCaching
-public class RedisConfig extends CachingConfigurerSupport {
+public class RedisConfig implements CachingConfigurer {
 
-    @Value("${spring.redis.host}")
+    @Value("${spring.data.redis.host}")
     private String host;
 
-    @Value("${spring.redis.port}")
+    @Value("${spring.data.redis.port}")
     private int port;
 
-    @Value("${spring.redis.timeout}")
+    @Value("${spring.data.redis.timeout}")
     private int timeout;
 
-    @Value("${spring.redis.jedis.pool.max-idle}")
+    @Value("${spring.data.redis.jedis.pool.max-idle}")
     private int maxIdle;
 
-    @Value("${spring.redis.jedis.pool.max-wait}")
+    @Value("${spring.data.redis.jedis.pool.max-wait}")
     private long maxWaitMillis;
 
     /**
@@ -50,7 +51,7 @@ public class RedisConfig extends CachingConfigurerSupport {
     public JedisPool redisPoolFactory() {
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxIdle(maxIdle);
-        jedisPoolConfig.setMaxWaitMillis(maxWaitMillis);
+        jedisPoolConfig.setMaxWait(Duration.ofMillis(maxWaitMillis));
         return new JedisPool(jedisPoolConfig, host, port, timeout);
     }
 
@@ -101,11 +102,11 @@ public class RedisConfig extends CachingConfigurerSupport {
 
         // 序列化配置
         // json的序列化
-        Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);    // 用json序列化任意对象类
         ObjectMapper om = new ObjectMapper();       // 对象类序列化过程中用 ObjectMapper 进行转义
         om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
         om.activateDefaultTyping(LaissezFaireSubTypeValidator.instance, ObjectMapper.DefaultTyping.NON_FINAL);
-        jackson2JsonRedisSerializer.setObjectMapper(om);
+        // Spring Data Redis 3.x 中 ObjectMapper 改为通过构造器传入
+        Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer<>(om, Object.class);
         // String的序列化
         StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
 

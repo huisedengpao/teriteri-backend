@@ -142,6 +142,36 @@ public class RedisUtil {
     }
 
     /**
+     * 向zset添加成员（带分数）
+     * @param key
+     * @param value 成员
+     * @param score 分数（如弹幕的时间点）
+     */
+    public void zAdd(String key, Object value, double score) {
+        redisTemplate.opsForZSet().add(key, value, score);
+    }
+
+    /**
+     * 按分数范围取成员（如按视频时间点范围取弹幕分段）
+     * @param key
+     * @param min   最小分数（含）
+     * @param max   最大分数（含）
+     * @return  成员集合
+     */
+    public Set<Object> zRangeByScore(String key, double min, double max) {
+        return redisTemplate.opsForZSet().rangeByScore(key, min, max);
+    }
+
+    /**
+     * 移除zset中的成员
+     * @param key
+     * @param values 待移除成员
+     */
+    public void zRem(String key, Object... values) {
+        redisTemplate.opsForZSet().remove(key, values);
+    }
+
+    /**
      * 分数从大到小取排行榜
      * @param key
      * @param start

@@ -1,6 +1,7 @@
 package com.teriteri.backend.service.impl.video;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.teriteri.backend.component.moderation.ContentModerationService;
 import com.teriteri.backend.mapper.VideoMapper;
 import com.teriteri.backend.mapper.VideoStatsMapper;
 import com.teriteri.backend.pojo.CustomResponse;
@@ -58,6 +59,9 @@ public class VideoUploadServiceImpl implements VideoUploadService {
 
     @Autowired
     private ESUtil esUtil;
+
+    @Autowired
+    private ContentModerationService moderationService;
 
     @Autowired
     @Qualifier("taskExecutor")
@@ -308,6 +312,10 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         CompletableFuture.runAsync(() -> redisUtil.setExObjectValue("video:" + video.getVid(), video), taskExecutor);
         CompletableFuture.runAsync(() -> redisUtil.addMember("video_status:0", video.getVid()), taskExecutor);
         CompletableFuture.runAsync(() -> redisUtil.setExObjectValue("videoStats:" + video.getVid(), videoStats), taskExecutor);
+
+        // 提交LLM异步复审标题与简介，判定结果写入Redis（ai_review:video:{vid}）供管理员人工审核参考
+        moderationService.submitAsyncReview(ContentModerationService.TYPE_VIDEO, video.getVid(), video.getVid(),
+                (video.getTitle() == null ? "" : video.getTitle()) + " " + (video.getDescr() == null ? "" : video.getDescr()));
 
         // 其他逻辑 （发送消息通知写库成功）
     }

@@ -1,5 +1,7 @@
 package com.teriteri.backend.controller;
 
+import com.teriteri.backend.component.moderation.ContentModerationService;
+import com.teriteri.backend.component.moderation.ModerationResult;
 import com.teriteri.backend.pojo.CommentTree;
 import com.teriteri.backend.pojo.CustomResponse;
 import com.teriteri.backend.service.comment.CommentService;
@@ -18,6 +20,8 @@ public class CommentController {
     private CurrentUser currentUser;
     @Autowired
     private RedisUtil redisUtil;
+    @Autowired
+    private ContentModerationService moderationService;
 
     /**
      * 获取评论树列表，每次查十条
@@ -79,10 +83,23 @@ public class CommentController {
         Integer uid = currentUser.getUserId();
 
         CustomResponse customResponse = new CustomResponse();
+
+        // 内容审核双通道：AC自动机同步快筛，命中拦截级敏感词直接拒绝
+        ModerationResult moderationResult = moderationService.fastCheck(content);
+        if (moderationResult.isBlock()) {
+            customResponse.setCode(403);
+            customResponse.setMessage("评论含敏感内容，发送失败");
+            return customResponse;
+        }
+
         CommentTree commentTree = commentService.sendComment(vid, uid, rootId, parentId, toUserId, content);
         if (commentTree == null) {
             customResponse.setCode(500);
             customResponse.setMessage("发送失败！");
+        } else {
+            // 提交LLM异步复审，若判定违规则软删除该评论
+            moderationService.submitAsyncReview(ContentModerationService.TYPE_COMMENT,
+                    commentTree.getId(), vid, content, moderationResult);
         }
         customResponse.setData(commentTree);
         return customResponse;

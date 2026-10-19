@@ -11,6 +11,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -21,7 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.Objects;
 
 @Slf4j
@@ -84,13 +85,13 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 // 基于 token，不需要 csrf
-                .csrf().disable()
+                .csrf(AbstractHttpConfigurer::disable)
                 // 基于 token，不需要 session
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 下面开始设置权限
-                .authorizeRequests(authorize -> authorize
+                .authorizeHttpRequests(authorize -> authorize
                         // 请求放开接口
-                        .antMatchers("/druid/**","/favicon.ico",
+                        .requestMatchers("/druid/**","/favicon.ico",
                                 "/user/account/register",
                                 "/user/account/login",
                                 "/admin/account/login",
@@ -113,7 +114,7 @@ public class SecurityConfig {
                                 "/video/user-love",
                                 "/video/user-collect").permitAll()
                         // 允许HTTP OPTIONS请求
-                        .antMatchers(HttpMethod.OPTIONS).permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // 其他地址的访问均需验证权限
                         .anyRequest().authenticated()
                 )

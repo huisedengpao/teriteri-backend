@@ -8,6 +8,7 @@ import com.teriteri.backend.pojo.CustomResponse;
 import com.teriteri.backend.pojo.Video;
 import com.teriteri.backend.pojo.VideoStats;
 import com.teriteri.backend.service.category.CategoryService;
+import com.teriteri.backend.service.danmu.DanmuService;
 import com.teriteri.backend.service.user.UserService;
 import com.teriteri.backend.service.utils.CurrentUser;
 import com.teriteri.backend.service.video.VideoService;
@@ -24,7 +25,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Nullable;
+import org.springframework.lang.Nullable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -440,6 +441,7 @@ public class VideoServiceImpl implements VideoService {
                     redisUtil.delMember("video_status:" + lastStatus, vid);     // 从旧状态移除
                     redisUtil.delValue("video:" + vid);     // 删除旧的视频信息
                     redisUtil.delValue("danmu_idset:" + vid);   // 删除该视频的弹幕
+                    redisUtil.delValue(DanmuService.SEG_CACHE_KEY_PREFIX + vid);   // 删除该视频的弹幕分段缓存
                     redisUtil.zsetDelMember("user_video_upload:" + video.getUid(), video.getVid());
                     // 搞个异步线程去删除OSS的源文件
                     CompletableFuture.runAsync(() -> ossUtil.deleteFiles(videoPrefix), taskExecutor);

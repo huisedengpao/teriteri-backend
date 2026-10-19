@@ -2,7 +2,7 @@ package com.teriteri.backend.service.video;
 
 import com.teriteri.backend.pojo.CustomResponse;
 
-import javax.annotation.Nullable;
+import org.springframework.lang.Nullable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;

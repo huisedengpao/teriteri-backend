@@ -1,5 +1,7 @@
 package com.teriteri.backend.controller;
 
+import com.teriteri.backend.component.moderation.ContentModerationService;
+import com.teriteri.backend.component.moderation.ModerationResult;
 import com.teriteri.backend.pojo.CustomResponse;
 import com.teriteri.backend.pojo.dto.VideoUploadInfoDTO;
 import com.teriteri.backend.service.video.VideoUploadService;
@@ -16,6 +18,8 @@ import java.io.IOException;
 public class VideoUploadController {
     @Autowired
     private VideoUploadService videoUploadService;
+    @Autowired
+    private ContentModerationService moderationService;
 
     /**
      * 查询当前视频准备要上传的分片序号
@@ -83,6 +87,11 @@ public class VideoUploadController {
                                    @RequestParam("scid") String scid,
                                    @RequestParam("tags") String tags,
                                    @RequestParam("descr") String descr) {
+        // 内容审核双通道：AC自动机同步快筛标题/简介/标签，命中拦截级敏感词直接拒绝投稿
+        ModerationResult moderationResult = moderationService.fastCheck(title + " " + descr + " " + tags);
+        if (moderationResult.isBlock()) {
+            return new CustomResponse(403, "投稿内容含敏感词，请修改后重新提交", null);
+        }
         VideoUploadInfoDTO videoUploadInfoDTO = new VideoUploadInfoDTO(null, hash, title, type, auth, duration, mcid, scid, tags, descr, null);
         try {
             return videoUploadService.addVideo(cover, videoUploadInfoDTO);

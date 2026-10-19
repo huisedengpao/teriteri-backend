@@ -56,11 +56,11 @@ public class LlmReviewClient {
     }
 
     /** 429 限流时的最大尝试次数 */
-    private static final int MAX_ATTEMPTS = 3;
+    private static final int MAX_ATTEMPTS = 4;
 
     /**
      * 调用 LLM 复审一段内容。
-     * 遇到 429 限流按线性退避重试（弹幕高峰期可能瞬时超出模型 RPM 配额）；
+     * 遇到 429 限流按指数退避重试：等待 2s、4s、8s（弹幕高峰期可能瞬时超出模型 RPM 配额）；
      * 其他异常直接 fail-open。
      * @return 判定结果；调用失败或结果无法解析时返回 empty（fail-open）
      */
@@ -85,7 +85,8 @@ public class LlmReviewClient {
                 return parse(resp);
             } catch (HttpClientErrorException.TooManyRequests e) {
                 if (attempt < MAX_ATTEMPTS) {
-                    long backoffMillis = attempt * 2000L;
+                    // 指数退避：2s -> 4s -> 8s
+                    long backoffMillis = 2000L << (attempt - 1);
                     log.warn("LLM 复审触发限流(429)，{}ms 后进行第 {} 次重试", backoffMillis, attempt);
                     try {
                         Thread.sleep(backoffMillis);

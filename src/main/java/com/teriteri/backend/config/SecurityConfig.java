@@ -101,6 +101,7 @@ public class SecurityConfig {
                                 "/video/getone",
                                 "/ws/danmu/**",
                                 "/danmu-list/**",
+                                "/danmu-seg/**",
                                 "/msg/chat/outline",
                                 "/video/play/visitor",
                                 "/favorite/get-all/visitor",

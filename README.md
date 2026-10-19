@@ -1,187 +1,156 @@
-<div align=center style="margin-top: 20px">
-<img src="https://tinypic.host/images/2024/12/06/logo.png" width="200" height="200" />
-</div>
-<div align=center style="margin-bottom: 20px">
-<img src="https://tinypic.host/images/2024/12/06/teriteri-pink.png" height="50" />
-</div>
 <div align=center>
-<img src="https://img.shields.io/badge/java-1.8-blue"/>
-<img src="https://img.shields.io/badge/springboot-2.7-lightBlue"/>
-<img src="https://img.shields.io/badge/elasticsearch-7.17.16-red"/>
-<img src="https://img.shields.io/badge/vue-3.2-blue"/>
-<img src="https://img.shields.io/badge/node-16.16.0-green"/>
+
+![java](https://img.shields.io/badge/java-17-blue)
+![springboot](https://img.shields.io/badge/springboot-3.3.5-lightBlue)
+![rabbitmq](https://img.shields.io/badge/rabbitmq-3.13-orange)
+![mysql](https://img.shields.io/badge/mysql-8.0-336791)
+![redis](https://img.shields.io/badge/redis-7-DC382D)
+![elasticsearch](https://img.shields.io/badge/elasticsearch-7.17.16-red)
+![netty](https://img.shields.io/badge/netty-websocket-black)
+
 </div>
 
+# Teriteri-Backend
 
+一个仿 B 站视频网站的后端服务（Spring Boot 3 + Vue 3 前后端分离），主打两块改造：
 
-# 一个用Springboot + Vue开发的仿B站项目
+- **AI 内容审核双通道**：敏感词 AC 自动机同步快筛 + 大模型异步复审
+- **高并发弹幕链路**：RabbitMQ 削峰 + 批量推送 + Redis 分段缓存
 
-> **前言**：本项目是作者两年前的技术水平所写，代码中不免有一些瑕疵和纰漏，亦或是“屎山”，或者不够优雅。本人现已入职大半年，没有精力继续开发剩余功能了，有能力的小伙伴可以自行优化升级。总的来说，本项目对于一些开发小白来说还是非常不错的，能快速入门，毕竟像我这种注释这么详细的完整开源项目还是比较少的。最近作者打算在闲余时间用go+vite做teriteri2.0的全面重构以及功能拓展（只是有这个打算），不过距离实现也是遥遥无期哈，感兴趣的小伙伴可以关注一下。     ---- 2025/2/18 寻鹿
+## 技术栈
 
+| 层次 | 技术选型 |
+| --- | --- |
+| 语言 / 框架 | Java 17、Spring Boot 3.3.5、MyBatis-Plus、Spring Security、JWT |
+| 数据库 | MySQL 8.0（Druid 连接池） |
+| 缓存 | Redis（Jedis，连接池 + ZSet 分段缓存） |
+| 消息队列 | RabbitMQ 3.13（批量消费削峰） |
+| 全文检索 | Elasticsearch 7.17.16 |
+| 实时通信 | Netty（WebSocket 弹幕 + IM 私信） |
+| AI 能力 | 阿里云百炼 DashScope（OpenAI 兼容模式，qwen-flash） |
+| 对象存储 | 阿里云 OSS |
 
+## 核心功能
 
-## 项目：Teriteri
+- 首页视频随机推荐、用户注册登录、个人中心信息修改
+- 视频投稿与视频审核（客户端 / 管理端）
+- 视频详情页：观看、点赞、收藏、**弹幕**、评论
+- 内容搜索（视频 + 用户，基于 Elasticsearch）
+- 消息系统（Netty IM 私信）、个人空间（作品 / 收藏夹）
 
-- 使用 java 语言复刻了一个B站，实现了一个弹幕视频网站所具备的大部分功能。
-- 采用前后端分离模式开发，web端分为客户端和后台管理。本项目主要实现客户端各功能，后台管理只写了视频审核。
-- 项目界面纯手搓，因此开发缓慢，总耗时7个多月。
+## 二次开发亮点
 
+### 1. AI 双通道内容审核
 
+把"人工审核 + 关键词硬过滤"升级为两级自动审核，兼顾**性能**与**准确率**：
 
-## 项目地址：
+| 通道 | 时机 | 实现 | 作用 |
+| --- | --- | --- | --- |
+| 快筛 | 同步、请求内 | Aho-Corasick 自动机多模式匹配 | 毫秒级拦截明显违规内容，挡住绝大部分流量 |
+| 复审 | 异步、请求外 | 大模型语义审查（DashScope qwen-flash） | 识别变体、谐音、语境违规，兜住快筛漏网内容 |
 
-- **视频演示：**
-  - [我用 SpringBoot + Vue 复刻了一个B站作为毕设项目(bilibili.com)](https://www.bilibili.com/video/BV1pM4m1D7Vt)
+- 已接入 **弹幕、评论、视频上传** 三个业务入口
+- 复审为异步执行，不阻塞用户请求；判定违规则软删除该内容并广播撤回
+- 针对大模型限流实现 **429 指数退避重试**；未配置 API Key 时自动降级为纯敏感词快筛，保证可用性
+- 敏感词词表支持分级：普通词直接拦截，`|REVIEW` 标记的词强制走复审
 
-- **后端代码：**
-  - [xunlu129/teriteri-backend: 一个基于 springboot + mybatis-plus 搭建的视频网站平台后端 (github.com)](https://github.com/xunlu129/teriteri-backend)
+### 2. 弹幕链路重构：MQ 削峰 + 批量推送 + 分段缓存
 
-- **客户端代码：**
-  - [xunlu129/teriteri-client: 一个基于 vue3 搭建的视频网站平台客户端 (github.com)](https://github.com/xunlu129/teriteri-client)
+**改造前的问题**：弹幕发送是同步的「写库 → 再逐条广播」，高峰期数据库写压力集中、响应延迟升高，且弹幕列表是全量拉取，视频越热门查询越慢。
 
-- **管理员端代码：**
-  - [xunlu129/teriteri-admin: 一个基于 vue3 搭建的视频网站平台管理员端 (github.com)](https://github.com/xunlu129/teriteri-admin)
+**改造后**拆分为「轻主链路 + 重异步消费」：
 
-### **代码都拿了，顺手帮忙给我视频点个赞，给代码点个star呗，拜托了，这对我真的很重要![0EF500CA](README.assets/0EF500CA.png)**
+```mermaid
+flowchart LR
+    A[客户端发送弹幕] --> B[鉴权]
+    B --> C[敏感词快筛]
+    C --> D[投递 MQ danmu_queue]
+    D --> E[立即返回成功]
+    D --> F[消费端批量拉取]
+    F --> G[批量落库 insertBatch]
+    F --> H[批量刷新统计与缓存]
+    F --> I[批量 WebSocket 广播]
+    F --> J[提交 LLM 异步复审]
+```
 
-### **声明：本项目只用作学习参考，无任何商业用途，对于项目中的部分图片来源，我已注明出处，若他人使用本项目造成的侵权问题，本人概不负责**
+- **主链路只做三件事**：鉴权 → 敏感词快筛 → 投递 MQ，随后立即返回，不再同步写库与广播
+- **批量消费**：消费端按「攒满 50 条 **或** 等待 200ms」双条件批量拉取，一次 `insert` 写入多行，替代原来的逐条插入
+- **分段缓存**：Redis ZSet 以弹幕时间点为分值维护 `danmu_seg:{vid}`，新增 `/danmu-seg/{vid}` 接口，按播放进度分段拉取，替代原全量拉取
+- 视频删除时同步清理对应分段缓存，避免脏数据
 
+### 3. 技术基座升级
 
+- JDK 1.8 → **17**，Spring Boot 2.7 → **3.3.5**
+- 完成 `javax.*` → `jakarta.*` 全量迁移
+- 移除已停止维护的 log4j 1.x，Druid 监控 filter 由 `log4j` 改为 `slf4j`
+- 配置项随 Boot3 迁移：`spring.redis.*` → `spring.data.redis.*`；上传限制由已废弃的 `CommonsMultipartResolver` 改为 `spring.servlet.multipart`
 
-## 技术线
+### 4. 压测验证
 
-- **前端（web端）：**
-  - Vue3全家桶 + Element-Plus + Axios等
+编写 JMeter 压测脚本 [`jmeter/teriteri-danmu-stress.jmx`](./jmeter/teriteri-danmu-stress.jmx)，覆盖 4 个线程组：
 
-- **后端（服务端）：**
-  - SpringBoot2.7 + MyBatis-Plus + JWT + Netty等
+| 线程组 | 压测目标 |
+| --- | --- |
+| 压测账号注册 | 批量准备独立登录账号 |
+| 弹幕发送峰值压力 | WebSocket 高并发连发弹幕，采集主链路 RT / TPS / 错误率 |
+| 弹幕查询对比 | `/danmu-list` 全量查询 vs `/danmu-seg` 分段查询 |
+| MQ 队列深度监控 | 轮询管理 API，记录峰值积压条数与消化归零耗时 |
 
-- **数据库：**
-  - MySQL + Redis + ElasticSearch7.17.16
+> 参数支持 `-J` 覆盖（`ws_threads`、`ws_rampup`、`danmu_per_user`、`send_interval_ms`、`http_threads`、`monitor_duration`、`vid`）。
 
-- **开发环境：**
-  - NodeJs: 16.16.0 + JDK: 1.8
+## 快速开始
 
+### 依赖服务
 
+启动前需准备：**MySQL 8.0**、**Redis**、**RabbitMQ 3.13**、**Elasticsearch 7.17.16**（需安装 IK 等分词插件）。
 
-## 项目功能
+### 配置
 
-- **首页视频随机推荐**
-- **用户注册登录**
-- **个人中心信息修改**
-- **视频投稿**
-- **视频审核**
-- **内容搜索（视频 + 用户）**
-- **视频详情页（观看 + 点赞 + 收藏 + 弹幕 + 评论）**
-- **消息系统（聊天等）**
-- **个人空间（用户作品 + 收藏夹等）**
+项目以 `application.yml` 作为启动配置（该文件已被 `.gitignore` 忽略，用于存放本地敏感信息）。
+把 `src/main/resources/application` 复制一份、重命名为 `application.yml`，再填写其中 `***` 处的连接信息即可。
 
-其他由于时间问题，暂停开发的功能：
-
-- 视频分区
-- 用户动态
-- 观看历史
-- 热门排行
-- 数据统计
-- 推荐算法
-
-
-
-## 代码部署注意事项
-
-- 首先：要体验完整功能，三个端的代码必须版本一致，前端启动依赖后端，所以建议先启动好后端后再启动前端，以防出现一些问题报错。
-- 鉴于很多小伙伴对ES都不是很了解，我自己整理了一份ES笔记可供参考：[Elasticsearch笔记](./elasticsearch.md) ，笔记内容部分是在linux系统上操作的，windows上可以对照修改一下。**注意其中要安装两个分词插件。**
+> ⚠️ `application.yml` 内含数据库密码、对象存储 AK/SK、大模型 API Key，**请勿提交到仓库**。
 
 ### 数据库
 
-1. 除了 category 表是固有数据，其他表我是没有提供数据的。
-2. 由于没有初始数据，注册一个新用户后，修改 `user表` 的 `role` 属性为 1 或者 2 ，该用户就是管理员了，方能登录管理员端。
-3. 除了第二点以外，其他情况尽量不要直接修改数据库，防止 MySQL 和 Redis 和 ES 数据不一致出问题。
+1. 执行 `database/teriteri.sql` 建库建表（仅 `category` 为固有数据，其余表无初始数据）
+2. 无初始用户，注册后可手动把 `user` 表 `role` 改为 1 或 2 获得管理员身份
+3. 尽量避免直接改库，防止 MySQL / Redis / ES 三方数据不一致
 
-### 后端
-
-1. 项目使用 `阿里云OSS` 存储视频，请自行准备，当然代码也有提供上传本地的方法（已注掉），但是没有写怎么观看视频，要是不嫌麻烦可以自行补写，不过本地视频的话，前端要通过读数据流播放可能非常困难，因此，本人还是建议开通一个阿里云对象存储，省时省力，而且也不贵。
-2. 项目使用的 `ElasticSearch` 版本为 `7.17.16`，如果使用其他版本，请更改 `pom.xml` 内对应的 `version` 。ES的索引创建，可以运行测试类 `ApplicationTests` 中的 `createIndex` 方法自动创建。
-3. 项目使用 `application.yml` 文件作为启动配置，因此不要在 `application.properties` 中写东西，或者你把配置信息全部写到pro也行。把 resources 中的 `application` 文件加上后缀 `.yml` 即可，需要根据自己服务器信息填写好其中带 `***` 号的配置信息。**注意个人信息泄露风险！！！**
-4. 注意Netty服务占用**7071**端口，如果需要更换，请在 `IMServer` 类中设置。
-
-准备好以上说的后，就可以启动项目了：
+### 启动
 
 ```bash
-1、下载Maven依赖
+# 1. 下载依赖并编译
+mvn clean compile
 
-2、启动BackendApplication
+# 2. 启动主类
+BackendApplication
 ```
 
-### 前端
+### 端口占用
 
-1. 轮播图是在 `carousel.json` 写死的，可以改成你自己的，目前轮播的是我OSS上的资源，我只开了 localhost:8787 的白名单，所以如果服务端口改成其他会出现图片加载失败的情况。
-2. 一些图标库可以在阿里巴巴矢量图标库上找，因为现在用的是我创建的图标库，指不定哪天我改几下，旧的图标就用不了了。
-3. 注意代理端口号和后端匹配，在 `vue.config.js` 和 `.env.development` 中修改。
-4. 打包部署的话用的是 `.env.production`。
+| 端口 | 用途 |
+| --- | --- |
+| 7070 | 后端 HTTP 服务 |
+| 7071 | Netty IM / WebSocket 服务 |
+| 5672 / 15672 | RabbitMQ AMQP / 管理后台 |
+| 6379 / 9200 | Redis / Elasticsearch |
 
-剩下没什么好注意的，启动就完事了：
+如需调整 Netty 端口，在 `IMServer` 类中修改。
 
-```bash
-1、下载依赖
-npm install
+## 目录结构
 
-2、启动项目
-npm run serve
+```
+src/main/java/com/teriteri/backend
+├── component
+│   ├── danmu          # 弹幕 WebSocket 服务端、MQ 消费者
+│   └── moderation     # 内容审核：AC 自动机快筛 + LLM 复审客户端
+├── config             # Druid / Redis / RabbitMQ / Security 等配置
+├── controller         # 接口层
+├── service            # 业务层（弹幕、评论、视频、搜索等）
+└── utils              # JWT、Redis 工具等
 ```
 
-### **最后注意一下版权问题**
+## License
 
-
-
-## 界面展示
-
-### 网站首页
-
-![image-20240415162456125](README.assets/image-20240415162456125.png)
-
-### 创作中心
-
-![image-20240415165805944](README.assets/image-20240415165805944.png)
-
-![image-20240415170725088](README.assets/image-20240415170725088.png)
-
-![image-20240415170948347](README.assets/image-20240415170948347.png)
-
-### 视频审核
-
-![image-20240415171701224](README.assets/image-20240415171701224.png)
-
-![image-20240415171759941](README.assets/image-20240415171759941.png)
-
-### 视频详情页
-
-![image-20240415173743314](README.assets/image-20240415173743314.png)
-
-![image-20240415174054777](README.assets/image-20240415174054777.png)
-
-### 搜索页面
-
-![image-20240415174815293](README.assets/image-20240415174815293.png)
-
-![image-20240415175047210](README.assets/image-20240415175047210.png)
-
-![image-20240415174616748](README.assets/image-20240415174616748.png)
-
-![image-20240415174842325](README.assets/image-20240415174842325.png)
-
-![image-20240415175335504](README.assets/image-20240415175335504.png)
-
-![image-20240415175456058](README.assets/image-20240415175456058.png)
-
-### 个人中心
-
-![image-20240415175625450](README.assets/image-20240415175625450.png)
-
-![image-20240415175654208](README.assets/image-20240415175654208.png)
-
-![image-20240415175708364](README.assets/image-20240415175708364.png)
-
-### 消息中心
-
-![image-20240415180214595](README.assets/image-20240415180214595.png)
+本项目基于 MIT License 开源，详见 [LICENSE](./LICENSE)。

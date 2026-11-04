@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,7 +53,7 @@ public class SensitiveWordFilter {
     }
 
     /** 常见用于规避过滤的干扰字符，匹配前先剔除 */
-    private static final String NOISE_CHARS = " \t\r\n*~!！.。,，-—_+=$%^&|/\\[]{}()（）<>？?;；:：'\"`·.";
+    private static final String NOISE_CHARS = " \t\r\n*~!！.。,，-—_+=$%^&|/\\[]{}()（）<>？?;；:：'\"`·.【】〔〕「」『』《》〈〉、";
 
     /** 根节点引用用 volatile 保证构建完成后对其他线程立即可见 */
     private volatile Node root = new Node();
@@ -144,18 +145,37 @@ public class SensitiveWordFilter {
     }
 
     /**
-     * 文本归一化：转小写并剔除干扰字符，对抗"傻 逼"、"傻*逼"这类简单变形规避
+     * 文本归一化：NFKC 统一全角/兼容字符，转小写，并剔除干扰字符、表情与零宽字符，
+     * 对抗"傻 逼"、"傻*逼"、"傻【逼】"、"傻😊逼"、"ＦＵＣＫ"这类变形规避
      */
     private String normalize(String text) {
-        StringBuilder sb = new StringBuilder(text.length());
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (NOISE_CHARS.indexOf(c) >= 0) {
+        String unified = Normalizer.normalize(text, Normalizer.Form.NFKC);
+        StringBuilder sb = new StringBuilder(unified.length());
+        for (int i = 0; i < unified.length(); ) {
+            int cp = unified.codePointAt(i);
+            i += Character.charCount(cp);
+            if (isNoise(cp)) {
                 continue;
             }
-            sb.append(Character.toLowerCase(c));
+            sb.appendCodePoint(Character.toLowerCase(cp));
         }
         return sb.toString();
+    }
+
+    /** 干扰字符：显式标点 + 符号类字符（含 emoji）+ 零宽/组合字符 */
+    private boolean isNoise(int cp) {
+        if (cp < Character.MIN_SUPPLEMENTARY_CODE_POINT && NOISE_CHARS.indexOf((char) cp) >= 0) {
+            return true;
+        }
+        int type = Character.getType(cp);
+        return type == Character.OTHER_SYMBOL
+                || type == Character.MATH_SYMBOL
+                || type == Character.MODIFIER_SYMBOL
+                || type == Character.CURRENCY_SYMBOL
+                || type == Character.FORMAT
+                || type == Character.NON_SPACING_MARK
+                || type == Character.ENCLOSING_MARK
+                || type == Character.COMBINING_SPACING_MARK;
     }
 
     /**

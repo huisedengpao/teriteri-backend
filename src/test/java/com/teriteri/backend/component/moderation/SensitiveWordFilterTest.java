@@ -69,6 +69,10 @@ class SensitiveWordFilterTest {
         assertEquals(ModerationResult.Action.BLOCK, filter.check("傻 逼").getAction());
         assertEquals(ModerationResult.Action.BLOCK, filter.check("傻*逼").getAction());
         assertEquals(ModerationResult.Action.BLOCK, filter.check("杀-了-你").getAction());
+        // 中文括号、emoji、全角字符规避
+        assertEquals(ModerationResult.Action.BLOCK, filter.check("傻【逼】").getAction());
+        assertEquals(ModerationResult.Action.BLOCK, filter.check("傻😊逼").getAction());
+        assertEquals(ModerationResult.Action.BLOCK, filter.check("ＦＵＣＫ you").getAction());
     }
 
     @Test

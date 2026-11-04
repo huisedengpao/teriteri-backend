@@ -1,8 +1,9 @@
 # 敏感词词表（改进②：内容审核双通道）
 # 格式：每行一个词；默认为 BLOCK 级（命中直接拒绝）；词后加 |REVIEW 表示 REVIEW 级（先发后审，交由 LLM 异步复审）
 # 以 # 开头的行为注释，空行忽略
+# 分级原则：BLOCK 只放语义明确、几乎不存在正常语境的辱骂/威胁；需要结合上下文判断的词一律 REVIEW
 
-# ============ 辱骂攻击（BLOCK） ============
+# ============ 辱骂攻击（BLOCK：明确人身攻击） ============
 傻逼
 煞笔
 沙比
@@ -11,9 +12,6 @@
 shabi
 caonima
 fuck
-妈的
-他妈的
-你妈的
 草泥马
 贱人
 贱货
@@ -21,28 +19,89 @@ fuck
 狗杂种
 弱智
 脑残
-去死
 死全家
-废物
+垃圾玩意
+傻狗
+蠢货
+混蛋
+王八蛋
+杂种
+智障
+疯狗
+你妈死了
+死胖子
+丑逼
+傻叉
+贱骨头
+猪脑子
+畜生
+人渣
+败类
+婊子
+狗娘养的
 
-# ============ 暴力威胁（BLOCK） ============
-杀了你
+# ============ 暴力威胁（BLOCK：明确暴力） ============
 砍死你
 弄死你
 打死你
 灭你全家
 
-# ============ 违法违规（BLOCK） ============
-赌博
-博彩
-冰毒
-迷药
-枪支
-代开发票
-高利贷
-色情
-嫖娼
-约炮
+# ============ 暴力威胁（REVIEW：可能是台词、转述或玩笑） ============
+杀了你|REVIEW
+去死|REVIEW
+死定了|REVIEW
+剁了|REVIEW
+不得好死|REVIEW
+弄死|REVIEW
+弄你|REVIEW
+我让你消失|REVIEW
+出门小心点|REVIEW
+你给我等着|REVIEW
+我知道你家在哪|REVIEW
+找人弄你|REVIEW
+别让我碰到你|REVIEW
+
+# ============ 情绪化脏话（REVIEW：可能是感叹、自嘲或台词） ============
+妈的|REVIEW
+他妈的|REVIEW
+你妈的|REVIEW
+你他妈|REVIEW
+废物|REVIEW
+
+# ============ 违法违规（REVIEW：需区分交易/招揽与新闻、科普、普法语境） ============
+赌博|REVIEW
+博彩|REVIEW
+冰毒|REVIEW
+迷药|REVIEW
+枪支|REVIEW
+代开发票|REVIEW
+高利贷|REVIEW
+色情|REVIEW
+嫖娼|REVIEW
+约炮|REVIEW
+网赌|REVIEW
+私彩|REVIEW
+传销|REVIEW
+洗钱|REVIEW
+个人信息|REVIEW
+假证|REVIEW
+毒品|REVIEW
+黑客|REVIEW
+破解软件|REVIEW
+代写论文|REVIEW
+招嫖|REVIEW
+卖淫|REVIEW
+裸聊|REVIEW
+诈骗话术|REVIEW
+假币|REVIEW
+走私|REVIEW
+迷奸|REVIEW
+实名账号|REVIEW
+跑分|REVIEW
+代办驾照|REVIEW
+出售身份证|REVIEW
+出售银行卡|REVIEW
+秒下款|REVIEW
 
 # ============ 广告引流（REVIEW：疑似营销，交给 LLM 复审判定） ============
 加微信|REVIEW
@@ -60,3 +119,25 @@ fuck
 加群|REVIEW
 群号|REVIEW
 优惠券|REVIEW
+加QQ|REVIEW
+私域|REVIEW
+代购|REVIEW
+代抢|REVIEW
+账号出租|REVIEW
+粉丝群|REVIEW
+贷款中介|REVIEW
+医美|REVIEW
+减肥药|REVIEW
+微商|REVIEW
+代理加盟|REVIEW
+招聘代理|REVIEW
+推广返佣|REVIEW
+返现|REVIEW
+领红包|REVIEW
+主页链接|REVIEW
+进群|REVIEW
+发资源|REVIEW
+充值折扣|REVIEW
+扫码|REVIEW
+领资料|REVIEW
+引流|REVIEW

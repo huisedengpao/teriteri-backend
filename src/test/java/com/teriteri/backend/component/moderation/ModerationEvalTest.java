@@ -249,7 +249,7 @@ class ModerationEvalTest {
         report.append("| 端到端误报率 | ").append(pct(metrics.falsePositiveRate())).append(" |\n");
         report.append("| LLM 确认 REVIEW 级违规 | ").append(llmConfirmedReview).append(" 条 |\n");
         report.append("| LLM 救回 PASS 级漏放 | ").append(llmRescuedPass).append(" 条 |\n");
-        report.append("| LLM 新增误报 | ").append(llmFalsePositive).append(" 条 |\n");
+        report.append("| LLM 误判正常样本 | ").append(llmFalsePositive).append(" 条 |\n");
         report.append("| LLM 调用失败（按 fail-open 放行） | ").append(failures).append(" 条 |\n");
         report.append("| 复审总耗时 | ").append(elapsedMillis).append(" ms |\n\n");
         report.append("### 端到端仍漏放\n\n");

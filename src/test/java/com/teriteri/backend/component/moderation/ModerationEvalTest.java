@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -194,6 +195,12 @@ class ModerationEvalTest {
         int llmConfirmedReview = 0;
         int llmRescuedPass = 0;
         int llmFalsePositive = 0;
+        boolean[] llmReject = new boolean[samples.size()];
+        double[] sampleU = new double[samples.size()];
+        Random sampling = new Random(20261104L);
+        for (int i = 0; i < samples.size(); i++) {
+            sampleU[i] = sampling.nextDouble();
+        }
         List<String> llmMisses = new ArrayList<>();
         List<String> llmFalsePositives = new ArrayList<>();
 
@@ -211,6 +218,7 @@ class ModerationEvalTest {
                     flagged = false;
                 } else if (verdict.get().reject()) {
                     flagged = true;
+                    llmReject[i] = true;
                     if (sample.label() == 1) {
                         if (fast.getAction() == ModerationResult.Action.PASS) {
                             llmRescuedPass++;
@@ -256,6 +264,62 @@ class ModerationEvalTest {
         appendList(report, llmMisses, "无");
         report.append("\n### 端到端误报\n\n");
         appendList(report, llmFalsePositives, "无");
+
+        if ("true".equalsIgnoreCase(System.getenv("MODERATION_EVAL_CURVE"))) {
+            appendCostCurve(report, samples, fastResults, llmReject, sampleU);
+        }
+    }
+
+    /**
+     * 用同一批 LLM 判定结果重放不同抽样率，避免重复调用。
+     * 抽样只作用于快筛 PASS 的样本，REVIEW 级始终复审。
+     */
+    private void appendCostCurve(StringBuilder report, List<Sample> samples, List<ModerationResult> fastResults,
+                                 boolean[] llmReject, double[] sampleU) {
+        report.append("\n## 复审抽样成本曲线（同一批评审结果重放）\n\n");
+        report.append("| 抽样率 | 复审调用 | 召回率 | 精确率 | 误报率 | F1 |\n");
+        report.append("| --- | --- | --- | --- | --- | --- |\n");
+        for (double rate : new double[]{0.0, 0.1, 0.3, 0.5, 1.0}) {
+            int calls = 0;
+            int tp = 0;
+            int fp = 0;
+            int fn = 0;
+            int tn = 0;
+            for (int i = 0; i < samples.size(); i++) {
+                Sample sample = samples.get(i);
+                ModerationResult fast = fastResults.get(i);
+                boolean flagged;
+                if (fast.isBlock()) {
+                    flagged = true;
+                } else if (fast.getAction() == ModerationResult.Action.REVIEW) {
+                    calls++;
+                    flagged = llmReject[i];
+                } else if (sampleU[i] < rate) {
+                    calls++;
+                    flagged = llmReject[i];
+                } else {
+                    flagged = false;
+                }
+                if (sample.label() == 1) {
+                    if (flagged) {
+                        tp++;
+                    } else {
+                        fn++;
+                    }
+                } else if (flagged) {
+                    fp++;
+                } else {
+                    tn++;
+                }
+            }
+            Metrics metrics = new Metrics(tp, fp, fn, tn);
+            report.append("| ").append(pct(rate)).append(" | ").append(calls)
+                    .append(" | ").append(pct(metrics.recall()))
+                    .append(" | ").append(pct(metrics.precision()))
+                    .append(" | ").append(pct(metrics.falsePositiveRate()))
+                    .append(" | ").append(pct(metrics.f1())).append(" |\n");
+        }
+        report.append("\n- 本评测集快筛无漏放，抽样率主要影响误报与调用成本；若存在 PASS 级漏放，抽样率也会影响召回\n");
     }
 
     /** 预热后循环扫描评测集，统计单次快筛的平均与 P99 延迟 */

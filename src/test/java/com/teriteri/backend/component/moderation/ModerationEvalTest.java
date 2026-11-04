@@ -191,7 +191,8 @@ class ModerationEvalTest {
         int fn = 0;
         int tn = 0;
         int failures = 0;
-        int llmRescued = 0;
+        int llmConfirmedReview = 0;
+        int llmRescuedPass = 0;
         int llmFalsePositive = 0;
         List<String> llmMisses = new ArrayList<>();
         List<String> llmFalsePositives = new ArrayList<>();
@@ -211,7 +212,11 @@ class ModerationEvalTest {
                 } else if (verdict.get().reject()) {
                     flagged = true;
                     if (sample.label() == 1) {
-                        llmRescued++;
+                        if (fast.getAction() == ModerationResult.Action.PASS) {
+                            llmRescuedPass++;
+                        } else {
+                            llmConfirmedReview++;
+                        }
                     } else {
                         llmFalsePositive++;
                     }
@@ -242,7 +247,8 @@ class ModerationEvalTest {
         report.append("| 端到端精确率 | ").append(pct(metrics.precision())).append(" |\n");
         report.append("| 端到端 F1 | ").append(pct(metrics.f1())).append(" |\n");
         report.append("| 端到端误报率 | ").append(pct(metrics.falsePositiveRate())).append(" |\n");
-        report.append("| LLM 救回快筛漏放 | ").append(llmRescued).append(" 条 |\n");
+        report.append("| LLM 确认 REVIEW 级违规 | ").append(llmConfirmedReview).append(" 条 |\n");
+        report.append("| LLM 救回 PASS 级漏放 | ").append(llmRescuedPass).append(" 条 |\n");
         report.append("| LLM 新增误报 | ").append(llmFalsePositive).append(" 条 |\n");
         report.append("| LLM 调用失败（按 fail-open 放行） | ").append(failures).append(" 条 |\n");
         report.append("| 复审总耗时 | ").append(elapsedMillis).append(" ms |\n\n");
